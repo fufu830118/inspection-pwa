@@ -58,6 +58,24 @@ function handleLogin() {
     error.value = null
 
     const authUrl = getAuthorizationUrl()
+
+    // 診斷資訊
+    console.log('🔍 OAuth 診斷資訊:')
+    console.log('當前頁面 URL:', window.location.href)
+    console.log('Authorization URL:', authUrl)
+
+    // 解析並顯示 redirect_uri
+    const url = new URL(authUrl)
+    const redirectUri = url.searchParams.get('redirect_uri')
+    console.log('Redirect URI:', redirectUri)
+
+    if (!redirectUri.startsWith('https://')) {
+      console.error('⚠️ 警告: Redirect URI 不是 HTTPS!')
+      error.value = `錯誤：Redirect URI 是 ${redirectUri}，但應該是 https://`
+      isLoading.value = false
+      return
+    }
+
     window.location.href = authUrl
   } catch (err) {
     error.value = '登入失敗，請稍後再試'

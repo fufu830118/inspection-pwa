@@ -17,6 +17,7 @@
   "author": "Michael Wang",
   "license": "MIT",
   "devDependencies": {
+    "@vitejs/plugin-basic-ssl": "^2.1.0",
     "@vitejs/plugin-vue": "^6.0.2",
     "autoprefixer": "^10.4.22",
     "postcss": "^8.5.6",

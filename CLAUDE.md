@@ -14,7 +14,7 @@
 # 安裝相依套件
 npm install
 
-# 啟動開發伺服器 (執行於 http://localhost:5173，可透過網路存取 0.0.0.0:5173)
+# 啟動開發伺服器 (執行於 https://localhost:5173，支援 HTTPS 供相機功能使用)
 npm run dev
 
 # 建置正式環境版本
@@ -51,7 +51,8 @@ npm run preview
 - Token URL 透過 Vite 代理：`/oauth-proxy` → `https://one.wiwynn.com/oauth/v2.0`
 - 使用 HTTP Basic Authentication 進行 token 交換
 - State 和 nonce 儲存在 sessionStorage 做 CSRF 保護
-- Redirect URI 必須與 OAuth portal 註冊的完全相符
+- Redirect URI 動態判斷（支援 localhost 和網路 IP），必須在 OAuth portal 註冊
+- **HTTPS 要求**：開發環境已配置 `@vitejs/plugin-basic-ssl` 自動啟用 HTTPS
 
 ### 動態表單系統
 
@@ -170,10 +171,11 @@ getCategoryProgress(categoryId) {
 5. 找到的話：帶 `categoryId` 和 `equipmentId` 導向檢查表單
 6. 沒找到：顯示警告
 
-**相機存取需求**：
-- 需要 HTTPS（localhost 除外）
-- 必須授予瀏覽器權限
-- 行動裝置：透過 HTTP 網路存取時相機可能無法運作
+**相機存取需求**（重要！）：
+- **必須使用 HTTPS**（相機 API 安全限制）
+- 開發環境已配置 `@vitejs/plugin-basic-ssl` 自動生成自簽憑證
+- 首次訪問需信任憑證（瀏覽器會顯示安全警告，選擇「繼續」即可）
+- 必須授予瀏覽器相機權限
 
 ## 設備清單結構
 
@@ -209,16 +211,39 @@ getCategoryProgress(categoryId) {
 
 ### 問題：手機相機無法啟動
 **原因**：相機存取需要 HTTPS，或權限被拒絕
-**修正**：使用 HTTPS 或 localhost。使用者也可以用手動輸入欄位作為替代方案。
+**解決**：開發環境已配置 HTTPS（`@vitejs/plugin-basic-ssl`）。首次訪問時信任自簽憑證即可。使用者也可以用手動輸入欄位作為替代方案。
 
 ## 行動裝置測試
 
-1. 啟動開發伺服器：`npm run dev`
-2. 伺服器執行在 `0.0.0.0:5173`（可透過網路存取）
-3. 在手機上，導向 `http://<你的IP>:5173`
-4. 要讓 OAuth 回調運作，在 OAuth portal 註冊基於 IP 的 redirect URI
+### 開發環境 HTTPS 配置
 
-**注意**：透過 HTTP 網路存取時相機無法運作。使用手動輸入或部署 HTTPS 進行完整測試。
+專案已配置 `@vitejs/plugin-basic-ssl` 自動啟用 HTTPS：
+
+1. **啟動開發伺服器**：`npm run dev`
+2. **電腦訪問**：`https://localhost:5173`
+3. **手機訪問**：`https://<你的IP>:5173`（例如 `https://10.235.211.239:5173`）
+
+### 首次訪問步驟
+
+**電腦瀏覽器**：
+1. 訪問 `https://localhost:5173`
+2. 看到「您的連線不是私人連線」警告
+3. 點擊「進階」→「繼續前往 localhost (不安全)」
+4. 即可正常使用
+
+**手機瀏覽器**：
+1. 訪問 `https://<你的IP>:5173`
+2. 看到憑證警告
+3. 選擇「繼續」或「仍要繼續」
+4. 相機功能即可正常運作
+
+### OAuth 設定
+
+需在 OAuth portal 註冊以下 Redirect URI：
+- 電腦開發：`https://localhost:5173/auth/callback`
+- 手機測試：`https://<你的IP>:5173/auth/callback`
+
+**重要**：Redirect URI 會自動根據訪問來源動態判斷（使用 `window.location.origin`）。
 
 ## CSV 匯出功能
 
@@ -273,3 +298,9 @@ getCategoryProgress(categoryId) {
 - **Continuous Scan**: 送出檢查單後，系統自動導向掃描頁面 (`/scan`)，實現連續檢查流程。
 - **One-Click Check**: 點擊頁面右上角的**類別圖示** (Category Icon)，可將所有勾選項目一鍵設為「正常」。
 - **Updated Links**: 異常通報連結已更新至最新的 Office Forms。
+
+### 6. HTTPS 開發環境 (2025-12-10)
+- **自動 HTTPS**: 安裝 `@vitejs/plugin-basic-ssl` 套件，開發伺服器自動啟用 HTTPS
+- **相機功能**: QR Code 掃描需要 HTTPS，現已支援電腦和手機測試
+- **動態 Redirect URI**: OAuth 回調 URI 自動根據訪問來源判斷（支援 localhost 和網路 IP）
+- **自簽憑證**: 使用自簽憑證，首次訪問需信任憑證（正式環境部署到 Azure 後會有正式憑證）
