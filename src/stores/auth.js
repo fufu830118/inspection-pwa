@@ -29,9 +29,9 @@ export const useAuthStore = defineStore('auth', () => {
         redirect_uri: OAUTH_CONFIG.REDIRECT_URI
       })
 
-      // 在生產環境使用直接 URL，開發環境使用 proxy
+      // 使用 Cloudflare Worker 代理 OAuth 請求
       const tokenUrl = import.meta.env.PROD
-        ? OAUTH_CONFIG.TOKEN_URL
+        ? 'https://inspection-pwa.f23022340.workers.dev/token'
         : '/oauth-proxy/token'
 
       const response = await fetch(tokenUrl, {
@@ -74,9 +74,9 @@ export const useAuthStore = defineStore('auth', () => {
     if (!accessToken.value) return
 
     try {
-      // 在生產環境使用直接 URL，開發環境使用 proxy
+      // 使用 Cloudflare Worker 代理 OAuth 請求
       const userinfoUrl = import.meta.env.PROD
-        ? OAUTH_CONFIG.USERINFO_URL
+        ? 'https://inspection-pwa.f23022340.workers.dev/userinfo'
         : '/oauth-proxy/userinfo'
 
       const response = await fetch(userinfoUrl, {

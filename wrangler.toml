@@ -1,0 +1,8 @@
+name = "oauth-proxy"
+main = "worker/oauth-proxy.js"
+compatibility_date = "2024-12-29"
+
+# Worker 設定
+workers_dev = true
+route = ""
+zone_id = ""
