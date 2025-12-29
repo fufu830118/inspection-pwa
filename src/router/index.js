@@ -9,12 +9,6 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
-    path: '/fire-extinguisher',
-    name: 'fire-extinguisher-home',
-    component: () => import('../views/FireExtinguisherHome.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
     path: '/category/:categoryId/equipment',
     name: 'equipment-list',
     component: () => import('../views/EquipmentList.vue'),
@@ -24,12 +18,6 @@ const routes = [
     path: '/scan',
     name: 'scan',
     component: () => import('../views/Scan.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/manual-input',
-    name: 'manual-input',
-    component: () => import('../views/ManualInput.vue'),
     meta: { requiresAuth: true }
   },
   {

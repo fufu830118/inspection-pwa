@@ -48,6 +48,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useCategoriesStore } from '../stores/categories'
 import { useInspectionStore } from '../stores/inspection'
+import { useEquipmentStore } from '../stores/equipment'
 import CategoryCard from '../components/CategoryCard.vue'
 import BottomNav from '../components/BottomNav.vue'
 
@@ -55,18 +56,13 @@ const router = useRouter()
 const authStore = useAuthStore()
 const categoriesStore = useCategoriesStore()
 const inspectionStore = useInspectionStore()
+const equipmentStore = useEquipmentStore()
 
 const userName = computed(() => authStore.userName)
 const categories = computed(() => categoriesStore.categories)
 
 function handleCategoryClick(category) {
-  // Special handling for Fire Extinguisher module (ID: '1')
-  if (category.id === '1') {
-    router.push({ name: 'fire-extinguisher-home' })
-    return
-  }
-
-  // 導向該類別的設備列表頁面
+  // 所有類別統一導向設備列表頁面
   router.push({
     name: 'equipment-list',
     params: { categoryId: category.id }
@@ -83,5 +79,6 @@ function handleLogout() {
 onMounted(async () => {
   await categoriesStore.loadCategories()
   await inspectionStore.loadInspections()
+  await equipmentStore.loadEquipment()
 })
 </script>

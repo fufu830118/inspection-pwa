@@ -4,7 +4,7 @@
     <div class="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-3">
       <div class="flex items-center gap-3">
         <button
-          @click="$router.back()"
+          @click="$router.push('/')"
           class="p-2 -ml-2 text-gray-600 active:bg-gray-100 rounded-lg transition-colors"
         >
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -15,6 +15,15 @@
           <h1 class="text-xl font-bold text-gray-900">{{ category?.icon }} {{ category?.name }}</h1>
           <p class="text-sm text-gray-500">本月檢查進度：{{ progress.checked }}/{{ progress.total }}</p>
         </div>
+        <button
+          @click="goToScan"
+          class="p-2 bg-primary-600 text-white rounded-lg active:bg-primary-700 transition-colors"
+          title="掃描 QR Code"
+        >
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -198,8 +207,20 @@ function isEquipmentChecked(equipmentId) {
   })
 }
 
-// 點擊設備開始檢查
+// 導向掃描頁面
+function goToScan() {
+  router.push({ name: 'scan' })
+}
+
+// 點擊設備處理（未檢查設備提示使用 QR Code）
 function handleEquipmentClick(equipment) {
+  // 如果設備未檢查，提示使用 QR Code 掃描
+  if (!isEquipmentChecked(equipment.id)) {
+    alert('請使用 QR Code 掃描功能進行檢查\n\n未檢查的設備無法直接點擊進入')
+    return
+  }
+
+  // 已檢查的設備可以點擊查看記錄
   router.push({
     name: 'inspection-form',
     params: {

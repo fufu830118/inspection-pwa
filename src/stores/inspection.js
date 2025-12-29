@@ -13,14 +13,24 @@ export const useInspectionStore = defineStore('inspection', () => {
   // Actions
   async function submitInspection(equipmentId, categoryId, formData) {
     const authStore = useAuthStore()
+    const categoriesStore = useCategoriesStore()
     isLoading.value = true
     error.value = null
 
     try {
-      // 計算檢查狀態 (如果所有必填項目都通過則為 pass)
-      const allChecksPassed = Object.entries(formData).every(([key, value]) => {
-        if (key === 'notes') return true // 備註欄位不影響狀態
-        return value === true || value !== '' // checkbox 為 true 或 radio 有值
+      // 獲取該類別的欄位配置
+      const category = categoriesStore.getCategoryById(categoryId)
+      const fields = category?.form_config?.fields || []
+
+      // 計算檢查狀態：只檢查布林類型的欄位（checkbox）
+      // 數字、文字欄位僅作記錄，不影響 pass/fail 狀態
+      const allChecksPassed = fields.every(field => {
+        // 只檢查 checkbox 類型欄位
+        if (field.type !== 'checkbox') return true
+
+        // checkbox 必須明確選擇「正常」(true) 才算通過
+        const value = formData[field.id]
+        return value === true
       })
 
       const log = {

@@ -3,8 +3,20 @@
     <!-- Header -->
     <header class="bg-gray-900 text-white safe-top z-10">
       <div class="px-4 py-4">
-        <h1 class="text-xl font-bold">掃描 QR Code</h1>
-        <p class="text-sm text-gray-300 mt-1">請對準設備上的 QR Code</p>
+        <div class="flex items-center gap-3">
+          <button
+            @click="$router.push('/')"
+            class="p-2 -ml-2 text-white active:bg-gray-800 rounded-lg transition-colors"
+          >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <div class="flex-1">
+            <h1 class="text-xl font-bold">掃描 QR Code</h1>
+            <p class="text-sm text-gray-300 mt-1">請對準設備上的 QR Code</p>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -38,47 +50,6 @@
           </p>
         </div>
       </div>
-
-      <!-- Manual Input Option -->
-      <button
-        v-if="!error && isScanning"
-        @click="showManualInput = true"
-        class="absolute bottom-4 bg-white text-gray-900 px-6 py-2 rounded-full shadow-lg text-sm font-medium"
-      >
-        手動輸入設備編號
-      </button>
-    </div>
-
-    <!-- Manual Input Modal -->
-    <div
-      v-if="showManualInput"
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-6 z-20"
-      @click.self="showManualInput = false"
-    >
-      <div class="bg-white rounded-xl p-6 max-w-sm w-full">
-        <h2 class="text-xl font-bold mb-4">手動輸入設備編號</h2>
-        <input
-          v-model="manualInput"
-          type="text"
-          placeholder="例如: FIRE-001"
-          class="input-field mb-4"
-          @keyup.enter="handleManualSubmit"
-        >
-        <div class="flex gap-3">
-          <button
-            @click="showManualInput = false"
-            class="flex-1 btn btn-secondary"
-          >
-            取消
-          </button>
-          <button
-            @click="handleManualSubmit"
-            class="flex-1 btn btn-primary"
-          >
-            確定
-          </button>
-        </div>
-      </div>
     </div>
 
     <!-- Bottom Navigation -->
@@ -98,9 +69,6 @@ const router = useRouter()
 const categoriesStore = useCategoriesStore()
 const equipmentStore = useEquipmentStore()
 const { isScanning, error, startScanning, stopScanning } = useQRScanner()
-
-const showManualInput = ref(false)
-const manualInput = ref('')
 
 onMounted(() => {
   initScanner()
@@ -126,9 +94,14 @@ function handleScanError(err) {
   console.error('掃描錯誤:', err)
 }
 
-function processEquipmentId(equipmentId) {
-  // 先從設備清單中查找設備
-  const equipment = equipmentStore.getEquipmentById(equipmentId)
+function processEquipmentId(qrCodeOrId) {
+  // 先嘗試用 QR Code (亂碼) 查找設備
+  let equipment = equipmentStore.getEquipmentByQRCode(qrCodeOrId)
+
+  // 如果找不到，再嘗試用設備編號查找
+  if (!equipment) {
+    equipment = equipmentStore.getEquipmentById(qrCodeOrId)
+  }
 
   if (equipment) {
     // 停止掃描
@@ -139,25 +112,17 @@ function processEquipmentId(equipmentId) {
       name: 'inspection-form',
       params: {
         categoryId: equipment.categoryId,
-        equipmentId: equipmentId
+        equipmentId: equipment.id  // 使用設備的正式 ID
       }
     })
   } else {
-    // 無法識別的設備編號
-    alert(`找不到設備編號: ${equipmentId}\n\n請確認編號是否正確，或聯絡系統管理員。`)
+    // 無法識別的設備編號或 QR Code
+    alert(`找不到設備: ${qrCodeOrId}\n\n請確認 QR Code 是否正確，或聯絡系統管理員。`)
   }
 }
 
 function retryScanning() {
   error.value = null
   initScanner()
-}
-
-function handleManualSubmit() {
-  if (manualInput.value.trim()) {
-    processEquipmentId(manualInput.value.trim())
-    showManualInput.value = false
-    manualInput.value = ''
-  }
 }
 </script>

@@ -14,7 +14,7 @@ export default defineConfig({
     port: 5173,
     host: '0.0.0.0',  // 允許網路訪問
     open: true,
-    strictPort: false,  // 如果 port 被佔用，自動換 port
+    strictPort: true,  // 強制使用 5173，不自動換 port
     proxy: {
       '/oauth-proxy': {
         target: 'https://one.wiwynn.com',

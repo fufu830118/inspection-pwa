@@ -13,142 +13,241 @@
             </svg>
           </button>
           <div>
-            <h1 class="text-xl font-bold text-gray-900">統計數據</h1>
-            <p class="text-sm text-gray-600">檢查統計與分析</p>
+            <h1 class="text-xl font-bold text-gray-900">統計報表</h1>
+            <p class="text-sm text-gray-600">本月巡檢數據分析</p>
           </div>
         </div>
       </div>
     </header>
 
     <!-- Main Content -->
-    <main class="flex-1 overflow-y-auto p-4 pb-20">
-      <!-- Time Period Selector -->
-      <div class="mb-6 bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-        <label class="block text-sm font-medium text-gray-700 mb-3">統計期間</label>
-        <div class="grid grid-cols-3 gap-2">
-          <button
-            v-for="period in periods"
-            :key="period.value"
-            @click="selectedPeriod = period.value"
-            :class="[
-              'py-2 px-3 rounded-lg text-sm font-medium transition-colors',
-              selectedPeriod === period.value
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-100 text-gray-700 active:bg-gray-200'
-            ]"
-          >
-            {{ period.label }}
-          </button>
-        </div>
-      </div>
-
-      <!-- Overview Cards -->
-      <div class="grid grid-cols-2 gap-4 mb-6">
-        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-5 text-white shadow-lg">
-          <div class="text-sm text-blue-100 mb-1">總檢查次數</div>
-          <div class="text-3xl font-bold">{{ stats.total }}</div>
-        </div>
-        <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-5 text-white shadow-lg">
-          <div class="text-sm text-green-100 mb-1">合格率</div>
-          <div class="text-3xl font-bold">{{ stats.passRate }}%</div>
-        </div>
-        <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-5 text-white shadow-lg">
-          <div class="text-sm text-emerald-100 mb-1">合格</div>
-          <div class="text-3xl font-bold">{{ stats.passed }}</div>
-        </div>
-        <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-xl p-5 text-white shadow-lg">
-          <div class="text-sm text-red-100 mb-1">異常</div>
-          <div class="text-3xl font-bold">{{ stats.failed }}</div>
-        </div>
-      </div>
-
-      <!-- Category Breakdown -->
+    <main class="flex-1 overflow-y-auto p-4 pb-20 bg-gray-50">
+      <!-- 1. 任務完成率（圓餅圖） -->
       <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-6">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">各類別統計</h2>
+        <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <span class="text-2xl">📊</span>
+          任務完成率
+        </h2>
+
+        <!-- 圓餅圖 -->
+        <div class="flex items-center justify-center mb-6">
+          <div class="relative w-48 h-48">
+            <!-- 圓餅圖 SVG -->
+            <svg viewBox="0 0 100 100" class="transform -rotate-90">
+              <!-- 已完成 (綠色) -->
+              <circle
+                cx="50"
+                cy="50"
+                r="40"
+                fill="none"
+                :stroke-dasharray="`${taskCompletion.completedPercentage * 2.513} 251.3`"
+                stroke-dashoffset="0"
+                stroke-width="20"
+                stroke="#10b981"
+              />
+              <!-- 未完成 (灰色) -->
+              <circle
+                cx="50"
+                cy="50"
+                r="40"
+                fill="none"
+                :stroke-dasharray="`${taskCompletion.pendingPercentage * 2.513} 251.3`"
+                :stroke-dashoffset="`${-taskCompletion.completedPercentage * 2.513}`"
+                stroke-width="20"
+                stroke="#e5e7eb"
+              />
+              <!-- 逾期完成 (橙色) -->
+              <circle
+                cx="50"
+                cy="50"
+                r="40"
+                fill="none"
+                :stroke-dasharray="`${taskCompletion.overduePercentage * 2.513} 251.3`"
+                :stroke-dashoffset="`${-(taskCompletion.completedPercentage + taskCompletion.pendingPercentage) * 2.513}`"
+                stroke-width="20"
+                stroke="#f59e0b"
+              />
+            </svg>
+            <!-- 中心文字 -->
+            <div class="absolute inset-0 flex flex-col items-center justify-center">
+              <div class="text-3xl font-bold text-gray-900">{{ taskCompletion.completedPercentage }}%</div>
+              <div class="text-xs text-gray-500">完成率</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 圖例 -->
+        <div class="grid grid-cols-3 gap-3 text-center">
+          <div>
+            <div class="flex items-center justify-center gap-2 mb-1">
+              <div class="w-3 h-3 rounded-full bg-green-500"></div>
+              <span class="text-xs text-gray-600">已完成</span>
+            </div>
+            <div class="text-lg font-bold text-gray-900">{{ taskCompletion.completed }}</div>
+          </div>
+          <div>
+            <div class="flex items-center justify-center gap-2 mb-1">
+              <div class="w-3 h-3 rounded-full bg-gray-300"></div>
+              <span class="text-xs text-gray-600">未完成</span>
+            </div>
+            <div class="text-lg font-bold text-gray-900">{{ taskCompletion.pending }}</div>
+          </div>
+          <div>
+            <div class="flex items-center justify-center gap-2 mb-1">
+              <div class="w-3 h-3 rounded-full bg-orange-500"></div>
+              <span class="text-xs text-gray-600">逾期完成</span>
+            </div>
+            <div class="text-lg font-bold text-gray-900">{{ taskCompletion.overdue }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. 巡檢缺失趨勢（折線圖） -->
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-6">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <span class="text-2xl">📈</span>
+          巡檢缺失趨勢
+        </h2>
+
+        <!-- 折線圖 -->
+        <div class="relative h-48 mb-4">
+          <!-- Y 軸刻度 -->
+          <div class="absolute left-0 top-0 bottom-0 w-8 flex flex-col justify-between text-xs text-gray-500">
+            <span>{{ defectTrend.maxCount }}</span>
+            <span>{{ Math.floor(defectTrend.maxCount / 2) }}</span>
+            <span>0</span>
+          </div>
+
+          <!-- 圖表區域 -->
+          <div class="ml-10 h-full border-l border-b border-gray-200 relative">
+            <svg class="absolute inset-0 w-full h-full" preserveAspectRatio="none">
+              <!-- 折線 -->
+              <polyline
+                :points="defectTrend.points"
+                fill="none"
+                stroke="#ef4444"
+                stroke-width="2"
+                class="transition-all"
+              />
+              <!-- 數據點 -->
+              <circle
+                v-for="(point, index) in defectTrend.dataPoints"
+                :key="index"
+                :cx="point.x"
+                :cy="point.y"
+                r="4"
+                fill="#ef4444"
+                class="transition-all"
+              />
+            </svg>
+          </div>
+        </div>
+
+        <!-- X 軸標籤 -->
+        <div class="ml-10 flex justify-between text-xs text-gray-600">
+          <span v-for="day in defectTrend.labels" :key="day">{{ day }}</span>
+        </div>
+
+        <!-- 統計摘要 -->
+        <div class="mt-4 grid grid-cols-2 gap-3">
+          <div class="bg-red-50 rounded-lg p-3 text-center">
+            <div class="text-xs text-red-600 mb-1">本月缺失總數</div>
+            <div class="text-2xl font-bold text-red-700">{{ defectTrend.totalDefects }}</div>
+          </div>
+          <div class="bg-orange-50 rounded-lg p-3 text-center">
+            <div class="text-xs text-orange-600 mb-1">平均每日缺失</div>
+            <div class="text-2xl font-bold text-orange-700">{{ defectTrend.avgPerDay }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. 缺失類型分佈（長條圖） -->
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-6">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <span class="text-2xl">📊</span>
+          缺失類型分佈
+        </h2>
+
+        <!-- 長條圖 -->
         <div class="space-y-4">
-          <div
-            v-for="cat in categoryStats"
-            :key="cat.id"
-            class="pb-4 border-b border-gray-100 last:border-0 last:pb-0"
-          >
+          <div v-for="defect in defectDistribution" :key="defect.name">
             <div class="flex items-center justify-between mb-2">
-              <div class="font-medium text-gray-900">{{ cat.name }}</div>
-              <div class="text-sm text-gray-600">{{ cat.count }} 次</div>
+              <div class="flex items-center gap-2">
+                <span>{{ defect.icon }}</span>
+                <span class="font-medium text-gray-900 text-sm">{{ defect.name }}</span>
+              </div>
+              <span class="text-sm font-bold text-red-600">{{ defect.count }} 件</span>
             </div>
-            <div class="flex items-center gap-3">
-              <div class="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div class="flex items-center gap-2">
+              <div class="flex-1 h-6 bg-gray-100 rounded-full overflow-hidden">
                 <div
-                  class="h-full bg-gradient-to-r from-green-400 to-green-500 transition-all"
-                  :style="{ width: cat.passRate + '%' }"
-                ></div>
+                  class="h-full bg-gradient-to-r from-red-400 to-red-500 transition-all rounded-full flex items-center justify-end pr-2"
+                  :style="{ width: defect.percentage + '%' }"
+                >
+                  <span v-if="defect.percentage > 20" class="text-xs font-medium text-white">
+                    {{ defect.percentage }}%
+                  </span>
+                </div>
               </div>
-              <div class="text-sm font-medium text-gray-700 min-w-[45px] text-right">
-                {{ cat.passRate }}%
-              </div>
+              <span v-if="defect.percentage <= 20" class="text-xs font-medium text-gray-600 w-12 text-right">
+                {{ defect.percentage }}%
+              </span>
             </div>
           </div>
-          <div v-if="categoryStats.length === 0" class="text-center py-8 text-gray-500">
-            暫無數據
+
+          <div v-if="defectDistribution.length === 0" class="text-center py-8 text-gray-500">
+            本月無缺失記錄
           </div>
         </div>
       </div>
 
-      <!-- Inspector Ranking -->
+      <!-- 4. 設備妥善率（KPI 大字報 + 圓餅圖） -->
       <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-6">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">檢查人員排行</h2>
+        <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <span class="text-2xl">🎯</span>
+          設備妥善率
+        </h2>
+
+        <!-- 整體妥善率大字報 -->
+        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-center mb-6 shadow-lg">
+          <div class="text-sm text-blue-100 mb-2">整體設備妥善率</div>
+          <div class="text-5xl font-bold text-white mb-1">{{ equipmentReadiness.overall }}%</div>
+          <div class="text-xs text-blue-100">
+            {{ equipmentReadiness.normalItems }} / {{ equipmentReadiness.totalItems }} 項目正常
+          </div>
+        </div>
+
+        <!-- 各類別妥善率 -->
         <div class="space-y-3">
           <div
-            v-for="(inspector, index) in inspectorRanking"
-            :key="inspector.name"
-            class="flex items-center gap-4 p-3 bg-gray-50 rounded-lg"
+            v-for="cat in equipmentReadiness.byCategory"
+            :key="cat.name"
+            class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
           >
-            <div
-              :class="[
-                'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm',
-                index === 0 ? 'bg-yellow-400 text-yellow-900' :
-                index === 1 ? 'bg-gray-300 text-gray-700' :
-                index === 2 ? 'bg-orange-400 text-orange-900' :
-                'bg-gray-200 text-gray-600'
-              ]"
-            >
-              {{ index + 1 }}
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="font-medium text-gray-900 truncate">{{ inspector.name }}</div>
-              <div class="text-xs text-gray-500 truncate">{{ inspector.email }}</div>
-            </div>
-            <div class="text-right">
-              <div class="font-bold text-gray-900">{{ inspector.count }}</div>
-              <div class="text-xs text-gray-500">次檢查</div>
-            </div>
-          </div>
-          <div v-if="inspectorRanking.length === 0" class="text-center py-8 text-gray-500">
-            暫無數據
-          </div>
-        </div>
-      </div>
-
-      <!-- Daily Trend -->
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-6">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">每日檢查趨勢</h2>
-        <div class="space-y-2">
-          <div
-            v-for="day in dailyTrend"
-            :key="day.date"
-            class="flex items-center gap-3"
-          >
-            <div class="text-sm text-gray-600 w-20">{{ day.dateLabel }}</div>
-            <div class="flex-1 h-8 bg-gray-100 rounded-lg overflow-hidden relative">
-              <div
-                class="h-full bg-gradient-to-r from-blue-400 to-blue-500 transition-all"
-                :style="{ width: day.percentage + '%' }"
-              ></div>
-              <div class="absolute inset-0 flex items-center px-3 text-sm font-medium text-gray-700">
-                {{ day.count }}
+            <div class="text-2xl">{{ cat.icon }}</div>
+            <div class="flex-1">
+              <div class="font-medium text-gray-900 text-sm mb-1">{{ cat.name }}</div>
+              <div class="flex items-center gap-2">
+                <div class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    :class="[
+                      'h-full transition-all rounded-full',
+                      cat.rate >= 95 ? 'bg-green-500' :
+                      cat.rate >= 80 ? 'bg-yellow-500' :
+                      'bg-red-500'
+                    ]"
+                    :style="{ width: cat.rate + '%' }"
+                  ></div>
+                </div>
+                <span class="text-xs font-bold text-gray-700 w-12 text-right">{{ cat.rate }}%</span>
               </div>
             </div>
+            <div class="text-right">
+              <div class="text-xs text-gray-500">{{ cat.normal }}/{{ cat.total }}</div>
+            </div>
           </div>
-          <div v-if="dailyTrend.length === 0" class="text-center py-8 text-gray-500">
+
+          <div v-if="equipmentReadiness.byCategory.length === 0" class="text-center py-8 text-gray-500">
             暫無數據
           </div>
         </div>
@@ -165,140 +264,211 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useInspectionStore } from '../stores/inspection'
 import { useCategoriesStore } from '../stores/categories'
+import { useEquipmentStore } from '../stores/equipment'
 import BottomNav from '../components/BottomNav.vue'
 
 const router = useRouter()
 const inspectionStore = useInspectionStore()
 const categoriesStore = useCategoriesStore()
-
-const selectedPeriod = ref('month')
-
-const periods = [
-  { value: 'week', label: '本週' },
-  { value: 'month', label: '本月' },
-  { value: 'year', label: '本年' }
-]
+const equipmentStore = useEquipmentStore()
 
 function goBack() {
-  router.back()
+  router.push('/')
 }
 
-// 根據選擇的期間過濾檢查記錄
-const filteredInspections = computed(() => {
+// 取得本月檢查記錄
+const thisMonthInspections = computed(() => {
   const now = new Date()
-  const inspections = inspectionStore.inspections
+  const currentMonth = now.getMonth()
+  const currentYear = now.getFullYear()
 
-  if (selectedPeriod.value === 'week') {
-    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-    return inspections.filter(log => new Date(log.created_at) >= weekAgo)
-  } else if (selectedPeriod.value === 'month') {
-    const currentMonth = now.getMonth()
-    const currentYear = now.getFullYear()
-    return inspections.filter(log => {
-      const logDate = new Date(log.created_at)
-      return logDate.getMonth() === currentMonth && logDate.getFullYear() === currentYear
-    })
-  } else {
-    const currentYear = now.getFullYear()
-    return inspections.filter(log => {
-      const logDate = new Date(log.created_at)
-      return logDate.getFullYear() === currentYear
-    })
+  return inspectionStore.inspections.filter(log => {
+    const logDate = new Date(log.created_at)
+    return logDate.getMonth() === currentMonth && logDate.getFullYear() === currentYear
+  })
+})
+
+// 1. 任務完成率
+const taskCompletion = computed(() => {
+  const now = new Date()
+  const currentMonth = now.getMonth()
+  const currentYear = now.getFullYear()
+
+  // 計算本月應檢查的設備數量（假設每個設備每月檢查一次）
+  const totalEquipment = equipmentStore.equipmentList.length
+
+  // 本月已檢查的設備（不重複）
+  const checkedEquipmentIds = new Set()
+  const overdueChecks = [] // 逾期完成的檢查（假設超過當月20號才完成視為逾期）
+
+  thisMonthInspections.value.forEach(log => {
+    checkedEquipmentIds.add(log.equipment_id)
+    const logDate = new Date(log.created_at)
+    if (logDate.getDate() > 20) {
+      overdueChecks.push(log.equipment_id)
+    }
+  })
+
+  const completed = checkedEquipmentIds.size - overdueChecks.length
+  const overdue = overdueChecks.length
+  const pending = totalEquipment - checkedEquipmentIds.size
+  const total = totalEquipment
+
+  return {
+    completed,
+    overdue,
+    pending,
+    total,
+    completedPercentage: total > 0 ? Math.round((completed / total) * 100) : 0,
+    overduePercentage: total > 0 ? Math.round((overdue / total) * 100) : 0,
+    pendingPercentage: total > 0 ? Math.round((pending / total) * 100) : 0
   }
 })
 
-// 總體統計
-const stats = computed(() => {
-  const total = filteredInspections.value.length
-  const passed = filteredInspections.value.filter(log => log.status === 'pass').length
-  const failed = filteredInspections.value.filter(log => log.status === 'fail').length
-  const passRate = total > 0 ? Math.round((passed / total) * 100) : 0
-
-  return { total, passed, failed, passRate }
-})
-
-// 各類別統計
-const categoryStats = computed(() => {
-  const categories = categoriesStore.categories
-  const stats = []
-
-  categories.forEach(category => {
-    const categoryInspections = filteredInspections.value.filter(
-      log => log.category_id === category.id
-    )
-    const count = categoryInspections.length
-    const passed = categoryInspections.filter(log => log.status === 'pass').length
-    const passRate = count > 0 ? Math.round((passed / count) * 100) : 0
-
-    if (count > 0) {
-      stats.push({
-        id: category.id,
-        name: category.name,
-        count,
-        passed,
-        passRate
-      })
-    }
-  })
-
-  return stats.sort((a, b) => b.count - a.count)
-})
-
-// 檢查人員排行
-const inspectorRanking = computed(() => {
-  const inspectorMap = new Map()
-
-  filteredInspections.value.forEach(log => {
-    const name = log.inspector_name || '未知'
-    const email = log.inspector_email || ''
-
-    if (inspectorMap.has(name)) {
-      inspectorMap.get(name).count++
-    } else {
-      inspectorMap.set(name, { name, email, count: 1 })
-    }
-  })
-
-  return Array.from(inspectorMap.values())
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 10)
-})
-
-// 每日趨勢（最近7天）
-const dailyTrend = computed(() => {
-  const days = []
+// 2. 巡檢缺失趨勢（本月每週）
+const defectTrend = computed(() => {
   const now = new Date()
-  const maxCount = ref(0)
+  const currentMonth = now.getMonth()
+  const currentYear = now.getFullYear()
 
-  // 生成最近7天的日期
-  for (let i = 6; i >= 0; i--) {
-    const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000)
-    const dateStr = date.toISOString().split('T')[0]
-    const count = filteredInspections.value.filter(log => {
-      const logDate = new Date(log.created_at).toISOString().split('T')[0]
-      return logDate === dateStr
+  // 生成本月每週的數據（簡化為每5天一個數據點）
+  const weeks = []
+  const weekData = []
+
+  for (let day = 1; day <= 30; day += 5) {
+    const startDate = new Date(currentYear, currentMonth, day)
+    const endDate = new Date(currentYear, currentMonth, day + 4)
+
+    const defects = thisMonthInspections.value.filter(log => {
+      const logDate = new Date(log.created_at)
+      return log.status === 'fail' && logDate >= startDate && logDate <= endDate
     }).length
 
-    if (count > maxCount.value) {
-      maxCount.value = count
-    }
-
-    days.push({
-      date: dateStr,
-      dateLabel: `${date.getMonth() + 1}/${date.getDate()}`,
-      count
-    })
+    weeks.push(`${day}日`)
+    weekData.push(defects)
   }
 
-  // 計算百分比
-  return days.map(day => ({
-    ...day,
-    percentage: maxCount.value > 0 ? (day.count / maxCount.value) * 100 : 0
+  const maxCount = Math.max(...weekData, 1)
+  const totalDefects = thisMonthInspections.value.filter(log => log.status === 'fail').length
+  const avgPerDay = Math.round(totalDefects / now.getDate())
+
+  // 生成折線圖的點座標
+  const points = weekData.map((count, index) => {
+    const x = (index / (weekData.length - 1)) * 100
+    const y = 100 - (count / maxCount) * 100
+    return `${x},${y}`
+  }).join(' ')
+
+  const dataPoints = weekData.map((count, index) => ({
+    x: `${(index / (weekData.length - 1)) * 100}%`,
+    y: `${100 - (count / maxCount) * 100}%`
   }))
+
+  return {
+    labels: weeks,
+    data: weekData,
+    points,
+    dataPoints,
+    maxCount,
+    totalDefects,
+    avgPerDay
+  }
+})
+
+// 3. 缺失類型分佈
+const defectDistribution = computed(() => {
+  const distribution = {}
+  const categories = categoriesStore.categories
+
+  // 計算各類別的缺失數量
+  thisMonthInspections.value.forEach(log => {
+    if (log.status === 'fail') {
+      const category = categories.find(cat => cat.id === log.category_id)
+      if (category) {
+        if (!distribution[category.name]) {
+          distribution[category.name] = {
+            name: category.name,
+            icon: category.icon,
+            count: 0
+          }
+        }
+        distribution[category.name].count++
+      }
+    }
+  })
+
+  const result = Object.values(distribution)
+  const maxCount = Math.max(...result.map(d => d.count), 1)
+
+  return result
+    .map(d => ({
+      ...d,
+      percentage: Math.round((d.count / maxCount) * 100)
+    }))
+    .sort((a, b) => b.count - a.count)
+})
+
+// 4. 設備妥善率
+const equipmentReadiness = computed(() => {
+  const categories = categoriesStore.categories
+  const byCategory = []
+
+  let totalNormalItems = 0
+  let totalItems = 0
+
+  categories.forEach(category => {
+    // 取得該類別的所有檢查記錄
+    const categoryInspections = thisMonthInspections.value.filter(
+      log => log.category_id === category.id
+    )
+
+    if (categoryInspections.length === 0) return
+
+    // 計算該類別的檢查項目總數和正常項目數
+    let normal = 0
+    let total = 0
+
+    categoryInspections.forEach(log => {
+      const inspectionData = log.inspection_data || {}
+      const fields = category.form_config?.fields || []
+
+      fields.forEach(field => {
+        if (field.type === 'checkbox') {
+          total++
+          if (inspectionData[field.id] === true) {
+            normal++
+          }
+        }
+      })
+    })
+
+    totalNormalItems += normal
+    totalItems += total
+
+    const rate = total > 0 ? Math.round((normal / total) * 100) : 0
+
+    byCategory.push({
+      name: category.name,
+      icon: category.icon,
+      normal,
+      total,
+      rate
+    })
+  })
+
+  const overall = totalItems > 0 ? Math.round((totalNormalItems / totalItems) * 100) : 0
+
+  return {
+    overall,
+    normalItems: totalNormalItems,
+    totalItems,
+    byCategory: byCategory.sort((a, b) => a.rate - b.rate)
+  }
 })
 
 onMounted(async () => {
   await inspectionStore.loadInspections()
   await categoriesStore.loadCategories()
+  await equipmentStore.loadEquipment()
 })
 </script>

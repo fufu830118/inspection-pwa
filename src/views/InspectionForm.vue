@@ -160,6 +160,27 @@
             ></textarea>
           </div>
 
+          <!-- Number Field -->
+          <div v-else-if="field.type === 'number'">
+            <label class="block text-gray-900 mb-2 font-medium">
+              {{ field.label }}
+              <span v-if="field.required" class="text-red-500 ml-1">*</span>
+            </label>
+            <div class="relative">
+              <input
+                v-model.number="formData[field.id]"
+                type="number"
+                step="0.01"
+                class="input-field text-base pr-12"
+                :required="field.required"
+                :placeholder="field.required ? '請輸入數值' : '選填'"
+              >
+              <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">
+                {{ getUnit(field.label) }}
+              </span>
+            </div>
+          </div>
+
           <!-- Text Field -->
           <div v-else-if="field.type === 'text'">
             <label class="block text-gray-900 mb-2 font-medium">
@@ -272,7 +293,10 @@ onMounted(() => {
 
 function handleBack() {
   if (confirm('確定要放棄這次檢查嗎？')) {
-    router.back()
+    router.push({
+      name: 'equipment-list',
+      params: { categoryId: categoryId.value }
+    })
   }
 }
 
@@ -319,6 +343,7 @@ function handleCheckAll() {
   }
 }
 
+
 // 检查是否即将到期（6个月内）
 function isExpiringSoon(expiryDateStr) {
   if (!expiryDateStr) return false
@@ -331,4 +356,15 @@ function isExpiringSoon(expiryDateStr) {
 
   return expiryDate <= sixMonthsLater && expiryDate >= today
 }
+
+// 根据欄位名稱自動判斷單位
+function getUnit(fieldLabel) {
+  if (fieldLabel.includes('電壓')) {
+    return 'V'
+  } else if (fieldLabel.includes('電流')) {
+    return 'A'
+  }
+  return ''
+}
+
 </script>

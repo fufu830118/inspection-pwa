@@ -1,275 +1,212 @@
 # 巡檢系統 PWA - Wiwynn Inspection System
 
-## 📱 專案概述
+## 專案概述
 
-這是一個專為手機瀏覽器設計的通用型巡檢 PWA 應用程式，支援多種設備類別的巡檢作業。
+這是一個為 Wiwynn 公司設備巡檢作業設計的 **mobile-first Progressive Web App (PWA)**。系統支援 15 種設備類別（滅火器、自動門、防火鐵捲門等），具備動態檢查表單、QR Code 掃描和 OAuth 認證功能。
 
-### 主要特色
+**技術堆疊**: Vue 3, Vite, Tailwind CSS, Pinia, Vue Router, html5-qrcode, PapaCSV
 
-- 📱 **Mobile-First 設計** - 採用底部導航欄，觸控友善
-- 🔐 **Wiwynn OAuth 認證** - 使用公司內部 OAuth 系統
-- 📷 **QR Code 掃碼** - 快速識別設備並開啟對應表單
-- 📊 **動態表單系統** - 根據設備類別自動載入檢查項目
-- 💾 **Supabase 後端** - 雲端資料庫儲存
-- 📤 **CSV 匯出** - 支援匯出檢查紀錄
-- 🔌 **離線支援** - PWA 可安裝到手機主畫面
-
-## 🏗️ 技術架構
-
-### 前端
-- **Vue 3** - Composition API
-- **Vite** - 開發工具
-- **Tailwind CSS** - Mobile-First 樣式
-- **Pinia** - 狀態管理
-- **Vue Router** - 路由管理
-- **html5-qrcode** - QR Code 掃描
-
-### 後端
-- **Supabase** - PostgreSQL 資料庫 + Auth
-- **Wiwynn OAuth** - SSO 認證整合
-
-## 📂 專案結構
-
-```
-inspection-pwa/
-├── public/
-│   ├── manifest.json          # PWA 配置
-│   ├── icon-192.png          # App 圖示
-│   └── icon-512.png
-├── src/
-│   ├── components/           # Vue 組件
-│   │   ├── BottomNav.vue    # 底部導航欄
-│   │   ├── CategoryCard.vue # 類別卡片
-│   │   └── Scanner.vue      # QR Code 掃描器
-│   ├── views/               # 頁面組件
-│   │   ├── Home.vue         # 首頁(類別列表)
-│   │   ├── Scan.vue         # 掃碼頁面
-│   │   ├── History.vue      # 歷史紀錄
-│   │   ├── InspectionForm.vue # 檢查表單
-│   │   ├── Login.vue        # 登入頁
-│   │   └── AuthCallback.vue # OAuth 回調
-│   ├── stores/              # Pinia Stores
-│   │   ├── auth.js          # 認證狀態
-│   │   ├── inspection.js    # 巡檢資料
-│   │   └── categories.js    # 類別管理
-│   ├── composables/         # Composable 函數
-│   │   ├── useQRScanner.js  # QR 掃描邏輯
-│   │   └── useOAuth.js      # OAuth 邏輯
-│   ├── utils/               # 工具函數
-│   │   ├── csv.js           # CSV 匯出
-│   │   └── api.js           # API 請求
-│   ├── config/              # 配置
-│   │   ├── oauth.js         # OAuth 配置
-│   │   └── supabase.js      # Supabase 配置
-│   ├── router/              # 路由配置
-│   │   └── index.js
-│   ├── App.vue              # 根組件
-│   ├── main.js              # 入口文件
-│   └── style.css            # 全局樣式
-├── index.html
-├── vite.config.js
-├── tailwind.config.js
-└── package.json
-```
-
-## 🎯 核心功能
-
-### 1. OAuth 認證流程
-1. 用戶點擊「登入」
-2. 導向 Wiwynn OAuth 頁面
-3. 使用員工帳號登入
-4. 回調到應用，獲取 access token
-5. 儲存用戶資訊到 Pinia store
-
-### 2. QR Code 掃描流程
-1. 用戶點擊底部「掃碼」按鈕
-2. 開啟相機
-3. 掃描 QR Code（例如：`FIRE-A23A1-01-1`）
-4. 系統識別設備類別前綴（`FIRE` = 滅火器）
-5. 自動跳轉到對應的檢查表單
-
-### 3. 動態表單系統
-- 根據設備類別從 `inspection_categories` 表載入 `form_config`
-- 動態渲染檢查項目（checkbox, radio, text, date）
-- 表單驗證
-- 提交到 `inspection_logs` 表
-
-### 4. 資料庫架構
-
-#### inspection_categories (檢查類別表)
-```sql
-CREATE TABLE inspection_categories (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name VARCHAR(100) NOT NULL,        -- 例如：滅火器
-  id_prefix VARCHAR(10) NOT NULL,    -- 例如：FIRE
-  icon VARCHAR(50),                   -- 圖示名稱
-  frequency VARCHAR(50),              -- 檢查頻率：每月/每季/每半年
-  form_config JSONB NOT NULL,         -- 表單配置
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
--- form_config 範例：
-{
-  "fields": [
-    {
-      "id": "appearance",
-      "label": "瓶身外觀是否無鏽蝕狀況",
-      "type": "checkbox",
-      "required": true
-    },
-    {
-      "id": "pressure",
-      "label": "壓力指示值是否在有效範圍(綠色)內",
-      "type": "checkbox",
-      "required": true
-    }
-  ]
-}
-```
-
-#### equipment_list (設備清單)
-```sql
-CREATE TABLE equipment_list (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  category_id UUID REFERENCES inspection_categories(id),
-  equipment_id VARCHAR(50) UNIQUE NOT NULL,  -- 例如：FIRE-A23A1-01-1
-  location VARCHAR(200),
-  qr_code VARCHAR(100),
-  metadata JSONB,                             -- 其他設備資訊
-  last_inspection_date TIMESTAMP,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-```
-
-#### inspection_logs (檢查紀錄)
-```sql
-CREATE TABLE inspection_logs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  equipment_id VARCHAR(50) REFERENCES equipment_list(equipment_id),
-  inspector_id UUID NOT NULL,                -- 檢查員 ID
-  inspector_name VARCHAR(100),
-  inspector_email VARCHAR(200),
-  inspection_data JSONB NOT NULL,            -- 檢查結果
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
--- inspection_data 範例：
-{
-  "appearance": true,
-  "pressure": true,
-  "notes": "正常"
-}
-```
-
-## 🚀 開發指南
+## 快速開始
 
 ### 安裝依賴
+
 ```bash
-cd inspection-pwa
 npm install
 ```
 
-### 開發模式
+### 啟動開發伺服器
+
 ```bash
 npm run dev
 ```
 
-### 建置生產版本
+專案會自動啟用 HTTPS，訪問 `https://localhost:5173`
+
+### 建置正式環境版本
+
 ```bash
 npm run build
 ```
 
-### 預覽生產版本
-```bash
-npm run preview
+## 主要特色
+
+- 📱 **Mobile-First 設計** - 採用觸控友善的底部導航欄
+- 🔐 **Wiwynn OAuth 認證** - 使用公司內部 OAuth SSO 系統
+- 📷 **QR Code 掃碼** - 快速識別設備並開啟對應表單
+- 📊 **動態表單系統** - 從 CSV 檔案動態載入檢查項目
+- 📤 **CSV 匯出** - 支援匯出檢查紀錄為 Excel 可讀格式
+- 🔌 **PWA 支援** - 可安裝到手機主畫面，支援離線使用
+
+## 專案結構
+
+```
+inspection-pwa/
+├── public/
+│   └── 檢點表/                    # CSV 資料來源
+│       ├── 滅火器/
+│       │   ├── 頻率.csv
+│       │   ├── 檢點項目.csv
+│       │   ├── 設備清單.csv
+│       │   └── 滅火器詳細清單.csv
+│       └── ... (其他 14 個類別)
+├── src/
+│   ├── components/              # Vue 組件
+│   ├── views/                   # 頁面組件
+│   ├── stores/                  # Pinia Stores
+│   ├── composables/             # Composable 函數
+│   ├── utils/                   # 工具函數
+│   ├── config/                  # 配置文件
+│   └── router/                  # 路由配置
+└── CLAUDE.md                    # 完整技術文檔（供 AI 使用）
 ```
 
-## ⚙️ Supabase 設定
+## 核心功能
 
-### 1. 建立 Supabase 專案
-1. 前往 [Supabase Dashboard](https://supabase.com/dashboard)
-2. 點擊「New Project」建立新專案
-3. 選擇區域（建議選擇 Singapore 以獲得較低延遲）
-4. 等待專案建立完成
+### 1. OAuth 認證流程
+1. 用戶點擊「登入」→ 導向 Wiwynn OAuth 頁面
+2. 使用員工帳號登入
+3. 回調到應用，獲取 access token
+4. 儲存用戶資訊到 Pinia store
 
-### 2. 執行資料庫 Schema
-1. 在 Supabase Dashboard 中，點擊左側選單的「SQL Editor」
-2. 開啟專案中的 `supabase/schema.sql` 檔案
-3. 複製整個 SQL 內容
-4. 貼上到 SQL Editor 中執行
-5. 確認執行成功，應該會看到以下資料表：
-   - `inspection_categories` - 檢查類別
-   - `equipment` - 設備清單
-   - `inspection_logs` - 檢查紀錄
-   - 以及相關的索引、視圖和觸發器
+### 2. QR Code 掃描流程
+1. 點擊底部「掃碼」按鈕
+2. 開啟相機掃描 QR Code
+3. 系統自動識別設備類別和編號
+4. 導向對應的檢查表單
 
-### 3. 配置環境變數
-1. 在專案根目錄，複製 `.env.example` 為 `.env`：
-   ```bash
-   cp .env.example .env
-   ```
+### 3. 動態檢查表單
+- 從 CSV 檔案動態載入檢查項目
+- 支援布林、數字、簡答等題型
+- 表單驗證與提交
+- 檢查記錄儲存到 localStorage
 
-2. 在 Supabase Dashboard 中取得 API 金鑰：
-   - 點擊左側選單「Project Settings」
-   - 選擇「API」分頁
-   - 複製以下資訊：
-     - `Project URL` → `VITE_SUPABASE_URL`
-     - `anon/public key` → `VITE_SUPABASE_ANON_KEY`
+### 4. 統計報表
+- 任務完成率（圓餅圖）
+- 巡檢缺失趨勢（折線圖）
+- 缺失類型分佈（長條圖）
+- 設備妥善率（KPI 儀表板）
 
-3. 編輯 `.env` 檔案，填入取得的資訊：
-   ```env
-   VITE_SUPABASE_URL=https://your-project.supabase.co
-   VITE_SUPABASE_ANON_KEY=your-anon-key-here
-   ```
+## 15 個設備類別
 
-### 4. 測試連線
-啟動開發伺服器後，系統會自動嘗試連接 Supabase：
+1. 滅火器 (FIREXT)
+2. 自動門 (AUTD)
+3. 防火鐵捲門 (FIRD)
+4. 逃生門 (EXIT)
+5. 會議室 (ROOM)
+6. 緊急沖眼器查檢表 (EYE)
+7. 事務機 (OFA)
+8. 送風機 (FAN)
+9. 氣冷箱型冷氣機 (CHI)
+10. 實驗室大電盤 (LABPOW-BIG)
+11. 辦公室大盤和實驗室小盤 (LABPOW-MIX)
+12. 辦公室小電盤 (OFFPOW-SMALL)
+13. 辦公室機房電盤 (OFFPOW-SERVER)
+14. 化學品室環境 (CHEM)
+15. 化學品洩漏處理車 (CHEMCART)
+
+## 開發環境配置
+
+### HTTPS 支援
+
+專案已配置 `@vitejs/plugin-basic-ssl` 自動啟用 HTTPS，以支援：
+- QR Code 掃描（相機 API 需要 HTTPS）
+- OAuth 認證（生產環境要求）
+
+**首次訪問步驟**：
+1. 訪問 `https://localhost:5173`
+2. 看到憑證警告，點擊「進階」→「繼續」
+3. 即可正常使用
+
+### OAuth 設定
+
+需在 Wiwynn OAuth Portal 註冊以下 Redirect URI：
+- 電腦開發：`https://localhost:5173/auth/callback`
+- 手機測試：`https://<你的IP>:5173/auth/callback`
+
+環境變數配置 (`.env.local`)：
 ```bash
-npm run dev
+VITE_OAUTH_REDIRECT_URI=https://10.178.209.239:5173/auth/callback
 ```
 
-打開瀏覽器開發者工具的 Console，如果看到任何 Supabase 連線錯誤，請檢查：
-- `.env` 設定是否正確
-- Supabase 專案是否已啟動
-- Row Level Security (RLS) 政策是否已正確設定
+## 新增設備類別
 
-## 📱 PWA 安裝
+1. 在 `public/檢點表/` 建立新資料夾（例如：`新設備/`）
+2. 建立以下 CSV 檔案：
+   - `頻率.csv` - 檢查頻率
+   - `檢點項目.csv` - 檢查表單欄位定義
+   - `設備清單.csv` - 設備 ID 與 QR Code 對應
+   - `{類別名稱}詳細清單.csv` - 設備詳細資訊（可選）
 
-### iOS (Safari)
-1. 點擊分享按鈕
-2. 選擇「加入主畫面」
-3. 完成
+3. 更新 `src/utils/csvLoader.js` 的 `categoryFolders` 陣列：
+   ```javascript
+   { name: '新設備', icon: '🔧', id_prefix: 'NEWDEV' }
+   ```
 
-### Android (Chrome)
-1. 點擊選單
-2. 選擇「安裝應用程式」
-3. 完成
+4. 重新啟動開發伺服器即可看到新類別
 
-## 🔄 開發進度
+## 手機測試
 
-1. ✅ 建立基礎專案結構（Vite + Vue 3 + Tailwind CSS）
-2. ✅ 配置 OAuth 認證（Wiwynn SSO）
-3. ✅ 實現 Pinia stores（auth, categories, inspection）
-4. ✅ 建立 UI 組件（BottomNav, CategoryCard）
-5. ✅ 建立所有頁面（Login, Home, Scan, History, InspectionForm）
-6. ✅ 整合 QR Scanner（html5-qrcode）
-7. ✅ 建立 Supabase 配置與 Schema
-8. ✅ 實現 CSV 匯出功能
+### 電腦測試
+1. 使用 Chrome DevTools 的手機模式 (F12 → Toggle device toolbar)
+2. 訪問 `https://localhost:5173`
 
-### 待完成功能
-- ⏳ 整合 Supabase 實際儲存（目前使用 localStorage）
-- ⏳ 照片上傳功能
-- ⏳ Service Worker 與離線支援
-- ⏳ 推播通知（提醒檢查期限）
-- ⏳ 設備位置地圖顯示
-- ⏳ 統計報表頁面
+### 手機測試
+1. 確認電腦和手機在同一網路
+2. 查詢電腦 IP：`ipconfig`（Windows）或 `ifconfig`（Mac/Linux）
+3. 手機訪問 `https://<你的IP>:5173`
+4. 信任自簽憑證即可使用相機功能
 
-## 📝 注意事項
+## 常見問題
 
-- 確保 OAuth redirect_uri 已在 Wiwynn OAuth Portal 註冊
-- 手機瀏覽器需要 HTTPS 才能使用相機（開發時可用 localhost）
-- PWA 需要 Service Worker（生產環境自動啟用）
+### Q: OAuth 登入後顯示 "Invalid redirect_uri"
+**A:** 確認 `.env.local` 中的 `VITE_OAUTH_REDIRECT_URI` 已在 Wiwynn OAuth Portal 註冊。
 
-## 👨‍💻 作者
+### Q: 相機無法啟動
+**A:**
+- 確保使用 HTTPS 訪問（開發環境 `https://localhost:5173`）
+- 檢查瀏覽器相機權限設定
+- iOS Safari 需要使用者手動點擊按鈕才能啟動相機
 
-Michael Wang - Wiwynn Corporation
+### Q: CSV 解析錯誤
+**A:**
+- 確認 CSV 使用 UTF-8 with BOM 編碼
+- 確認第一行為欄位名稱
+- 確認「必填」欄位值為「是」或「否」
+- 確認「題型」欄位值為「布林」、「數字」或「簡答」
+
+### Q: QR Code 掃描找不到設備
+**A:**
+- 檢查 `設備清單.csv` 中的「編碼顯示」欄位是否有該設備 ID
+- 檢查「亂碼」欄位是否與 QR Code 掃描結果一致
+- 使用瀏覽器 Console 查看 `equipmentStore.equipmentList` 確認設備已載入
+
+## 技術文檔
+
+詳細的技術文檔請參閱 [CLAUDE.md](CLAUDE.md)，包含：
+- 完整的架構說明
+- 路由與導航流程
+- CSV 資料結構
+- Pinia Store 詳細說明
+- 開發注意事項
+- 更新歷史
+
+## 未來規劃
+
+- [ ] Supabase 整合（取代 localStorage）
+- [ ] 離線模式支援（Service Worker）
+- [ ] 推播通知（到期提醒、未完成檢查提醒）
+- [ ] 多語言支援（i18n）
+- [ ] 深色模式
+- [ ] 設備維修記錄功能
+- [ ] 批次匯入設備（Excel/CSV 上傳）
+- [ ] 權限管理系統（管理員/檢查員角色）
+
+## 聯絡資訊
+
+**開發者**: Michael Wang - Wiwynn Corporation
+**專案建立日期**: 2025-12
+
+---
+
+**最後更新**: 2025-12-29
+**版本**: 2.0.0
