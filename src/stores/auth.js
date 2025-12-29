@@ -29,8 +29,12 @@ export const useAuthStore = defineStore('auth', () => {
         redirect_uri: OAUTH_CONFIG.REDIRECT_URI
       })
 
-      // 使用 Vite proxy 避免 CORS 問題
-      const response = await fetch('/oauth-proxy/token', {
+      // 在生產環境使用直接 URL，開發環境使用 proxy
+      const tokenUrl = import.meta.env.PROD
+        ? OAUTH_CONFIG.TOKEN_URL
+        : '/oauth-proxy/token'
+
+      const response = await fetch(tokenUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -70,8 +74,12 @@ export const useAuthStore = defineStore('auth', () => {
     if (!accessToken.value) return
 
     try {
-      // 使用 Vite proxy 避免 CORS 問題
-      const response = await fetch('/oauth-proxy/userinfo', {
+      // 在生產環境使用直接 URL，開發環境使用 proxy
+      const userinfoUrl = import.meta.env.PROD
+        ? OAUTH_CONFIG.USERINFO_URL
+        : '/oauth-proxy/userinfo'
+
+      const response = await fetch(userinfoUrl, {
         headers: {
           'Authorization': `Bearer ${accessToken.value}`
         }
