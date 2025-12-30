@@ -116,7 +116,12 @@
                 {{ inspection.equipment_id }}
               </td>
               <td class="px-6 py-4 text-sm text-slate-600 whitespace-nowrap">
-                {{ getCategoryName(inspection.category_id) }}
+                <div class="flex flex-col">
+                  <span>{{ getCategoryName(inspection.category_id) }}</span>
+                  <span v-if="inspection.sub_category" class="text-xs text-blue-500 font-medium">
+                     {{ inspection.sub_category }}
+                  </span>
+                </div>
               </td>
               <td class="px-6 py-4 text-sm text-slate-600 whitespace-nowrap">
                 {{ inspection.inspector_name }}

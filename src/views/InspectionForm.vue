@@ -474,7 +474,14 @@ async function handleSubmit() {
     const success = await inspectionStore.submitInspection(
       equipmentId.value,
       categoryId.value,
-      { ...formData.value }
+      { ...formData.value },
+      // [NEW] 傳遞區域設備的額外資訊
+      isAreaDevice.value ? {
+        subCategory: deviceType.value,
+        frequency: frequency.value,
+        deviceName: equipment.value?.name,
+        formConfig: areaFormConfig.value // 傳遞當前使用的 formConfig 以計算合格狀態
+      } : {}
     )
 
     if (success) {

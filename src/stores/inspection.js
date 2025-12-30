@@ -11,7 +11,7 @@ export const useInspectionStore = defineStore('inspection', () => {
   const error = ref(null)
 
   // Actions
-  async function submitInspection(equipmentId, categoryId, formData) {
+  async function submitInspection(equipmentId, categoryId, formData, extraData = {}) {
     const authStore = useAuthStore()
     const categoriesStore = useCategoriesStore()
     isLoading.value = true
@@ -19,8 +19,14 @@ export const useInspectionStore = defineStore('inspection', () => {
 
     try {
       // 獲取該類別的欄位配置
+      // 如果是區域設備(16)，可能需要用 extraData 中的 subCategory 來判斷，但目前欄位配置主要用於計算 status
       const category = categoriesStore.getCategoryById(categoryId)
-      const fields = category?.form_config?.fields || []
+      let fields = category?.form_config?.fields || []
+
+      // 如果有傳入自定義 formConfig (區域設備流程)，優先使用
+      if (extraData.formConfig) {
+        fields = extraData.formConfig.fields || []
+      }
 
       // 計算檢查狀態：只檢查布林類型的欄位（checkbox）
       // 數字、文字欄位僅作記錄，不影響 pass/fail 狀態
@@ -37,6 +43,9 @@ export const useInspectionStore = defineStore('inspection', () => {
         id: Date.now().toString(),
         equipment_id: equipmentId,
         category_id: categoryId,
+        sub_category: extraData.subCategory || null, // [NEW] 子類別 (設備類型)
+        frequency: extraData.frequency || null,       // [NEW] 檢查頻率
+        device_name: extraData.deviceName || null,    // [NEW] 設備名稱 (如 事務機1)
         inspector_id: authStore.user?.id,
         inspector_name: authStore.userName,
         inspector_email: authStore.userEmail,

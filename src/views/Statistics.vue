@@ -384,18 +384,38 @@ const defectDistribution = computed(() => {
   thisMonthInspections.value.forEach(log => {
     if (log.status === 'fail') {
       const category = categories.find(cat => cat.id === log.category_id)
+      
       if (category) {
-        if (!distribution[category.name]) {
-          distribution[category.name] = {
-            name: category.name,
-            icon: category.icon,
+        // [NEW] 如果是區域檢查(16)且有子類別，使用子類別名稱
+        let displayName = category.name
+        let displayIcon = category.icon
+
+        if (log.category_id === '16' && log.sub_category) {
+          displayName = `${log.sub_category} (區域)`
+          // 嘗試找對應圖示（雖然後端沒存圖示，這裡可以用簡單映射或共用區域圖示）
+          displayIcon = getSubCategoryIcon(log.sub_category) || '📍'
+        }
+
+        if (!distribution[displayName]) {
+          distribution[displayName] = {
+            name: displayName,
+            icon: displayIcon,
             count: 0
           }
         }
-        distribution[category.name].count++
+        distribution[displayName].count++
       }
     }
   })
+
+  // 輔助函數：取得子類別圖示
+  function getSubCategoryIcon(name) {
+    const icons = {
+      '事務機': '📠', '文具櫃': '📁', '植栽': '🌿', 
+      '環境清潔': '🧹', '冰箱': '🧊', '咖啡機': '☕'
+    }
+    return icons[name]
+  }
 
   const result = Object.values(distribution)
   const maxCount = Math.max(...result.map(d => d.count), 1)
@@ -417,44 +437,106 @@ const equipmentReadiness = computed(() => {
   let totalItems = 0
 
   categories.forEach(category => {
-    // 取得該類別的所有檢查記錄
-    const categoryInspections = thisMonthInspections.value.filter(
-      log => log.category_id === category.id
-    )
+    // [NEW] 如果是區域類別(16)，則嘗試根據 sub_category 拆分統計
+    if (category.id === '16') {
+      // 1. 找出所有區域檢查記錄
+      const areaInspections = thisMonthInspections.value.filter(
+        log => log.category_id === '16'
+      )
+      
+      // 2. 根據 sub_category 分組
+      const subGroups = {}
+      areaInspections.forEach(log => {
+        const subName = log.sub_category || '其他'
+        if (!subGroups[subName]) subGroups[subName] = []
+        subGroups[subName].push(log)
+      })
 
-    if (categoryInspections.length === 0) return
+      // 3. 對每個子群組計算妥善率
+      Object.entries(subGroups).forEach(([subName, logs]) => {
+        let normal = 0
+        let total = 0
+        
+        logs.forEach(log => {
+          const inspectionData = log.inspection_data || {}
+          // 注意：這裡無法輕易取得 form_config，只能遍歷數據中的 boolean 值
+          // 這是一個折衷方案，假設所有 true/false 都是檢查項目
+          Object.values(inspectionData).forEach(val => {
+            if (typeof val === 'boolean') {
+              total++
+              if (val === true) normal++
+            }
+          })
+        })
 
-    // 計算該類別的檢查項目總數和正常項目數
-    let normal = 0
-    let total = 0
-
-    categoryInspections.forEach(log => {
-      const inspectionData = log.inspection_data || {}
-      const fields = category.form_config?.fields || []
-
-      fields.forEach(field => {
-        if (field.type === 'checkbox') {
-          total++
-          if (inspectionData[field.id] === true) {
-            normal++
-          }
+        if (total > 0) {
+          totalNormalItems += normal
+          totalItems += total
+          const rate = Math.round((normal / total) * 100)
+          
+          byCategory.push({
+            name: `${subName}`,
+            icon: getSubCategoryIcon(subName) || '📍', // 使用上面定義的輔助函數
+            normal,
+            total,
+            rate
+          })
         }
       })
-    })
+      
+      // 不再將 "區域" 作為一個整體加入，除非沒有子類別數據
+      if (areaInspections.length === 0) {
+         // show nothing or empty
+      }
 
-    totalNormalItems += normal
-    totalItems += total
+    } else {
+      // 原有邏輯：一般類別
+      const categoryInspections = thisMonthInspections.value.filter(
+        log => log.category_id === category.id
+      )
 
-    const rate = total > 0 ? Math.round((normal / total) * 100) : 0
+      if (categoryInspections.length === 0) return
 
-    byCategory.push({
-      name: category.name,
-      icon: category.icon,
-      normal,
-      total,
-      rate
-    })
+      let normal = 0
+      let total = 0
+
+      categoryInspections.forEach(log => {
+        const inspectionData = log.inspection_data || {}
+        const fields = category.form_config?.fields || []
+
+        fields.forEach(field => {
+          if (field.type === 'checkbox') {
+            total++
+            if (inspectionData[field.id] === true) {
+              normal++
+            }
+          }
+        })
+      })
+
+      totalNormalItems += normal
+      totalItems += total
+
+      const rate = total > 0 ? Math.round((normal / total) * 100) : 0
+
+      byCategory.push({
+        name: category.name,
+        icon: category.icon,
+        normal,
+        total,
+        rate
+      })
+    }
   })
+
+  // 輔助函數 (需要在 setup 範圍內定義一次或移到外部)
+  function getSubCategoryIcon(name) {
+    const icons = {
+      '事務機': '📠', '文具櫃': '📁', '植栽': '🌿', 
+      '環境清潔': '🧹', '冰箱': '🧊', '咖啡機': '☕'
+    }
+    return icons[name]
+  }
 
   const overall = totalItems > 0 ? Math.round((totalNormalItems / totalItems) * 100) : 0
 

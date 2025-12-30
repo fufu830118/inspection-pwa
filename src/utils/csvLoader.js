@@ -13,7 +13,7 @@ export async function loadCSV(folderName, fileName) {
       throw new Error(`Failed to load ${folderName}/${fileName}`)
     }
 
-    const csvText = await response.text()
+    const csvText = (await response.text()).replace(/^\uFEFF/, '')
 
     return new Promise((resolve, reject) => {
       Papa.parse(csvText, {
@@ -88,7 +88,7 @@ export async function loadCategoryConfig() {
       throw new Error('Failed to load 類別配置.csv')
     }
 
-    const csvText = await response.text()
+    const csvText = (await response.text()).replace(/^\uFEFF/, '')
 
     return new Promise((resolve, reject) => {
       Papa.parse(csvText, {
@@ -121,20 +121,21 @@ export async function loadAllCategories() {
   for (let i = 0; i < categoryConfig.length; i++) {
     const config = categoryConfig[i]
     try {
-      // 讀取檢點項目 CSV
-      const inspectionItems = await loadCSV(config['類別名稱'], '檢點項目.csv')
+      let formConfig = { fields: [] }
 
-      // Debug: 印出載入的資料
-      console.log(`[${config['類別名稱']}] 載入 ${inspectionItems.length} 個檢查項目`)
-      if (inspectionItems.length > 0) {
-        console.log(`[${config['類別名稱']}] 第一個項目:`, inspectionItems[0])
-        console.log(`[${config['類別名稱']}] 欄位名稱:`, Object.keys(inspectionItems[0]))
+      // 區域類別 (ID: 16) 不需要載入主檢點項目 CSV，因為它是進入子設備選擇
+      if (config['類別ID'] === '16') {
+        // Do nothing, keep empty formConfig
+      } else {
+        // 其他類別正常讀取檢點項目 CSV
+        const inspectionItems = await loadCSV(config['類別名稱'], '檢點項目.csv')
+
+        // Debug: 印出載入的資料
+        // console.log(`[${config['類別名稱']}] 載入 ${inspectionItems.length} 個檢查項目`)
+
+        // 轉換為 form_config
+        formConfig = convertInspectionItemsToFormConfig(inspectionItems)
       }
-
-      // 轉換為 form_config
-      const formConfig = convertInspectionItemsToFormConfig(inspectionItems)
-
-      console.log(`[${config['類別名稱']}] 轉換後 ${formConfig.fields.length} 個欄位`)
 
       categories.push({
         id: config['類別ID'],

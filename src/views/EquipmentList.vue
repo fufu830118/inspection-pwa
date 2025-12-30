@@ -208,8 +208,12 @@ function isEquipmentChecked(equipmentId) {
 
 // 點擊設備處理（未檢查設備提示使用 QR Code）
 function handleEquipmentClick(equipment) {
-  // 如果設備未檢查，提示使用 QR Code 掃描
-  if (!isEquipmentChecked(equipment.id)) {
+  // 特殊類別：免掃碼 (20: 主管座車, 21: 一般車輛)
+  const noScanCategories = ['20', '21']
+  const isNoScanCategory = category.value && noScanCategories.includes(category.value.id)
+
+  // 如果設備未檢查且不是特殊免掃碼類別，提示使用 QR Code 掃描
+  if (!isEquipmentChecked(equipment.id) && !isNoScanCategory) {
     alert('請使用 QR Code 掃描功能進行檢查\n\n未檢查的設備無法直接點擊進入')
     return
   }
