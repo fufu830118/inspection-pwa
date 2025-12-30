@@ -29,6 +29,12 @@ const navItems = [
     label: '首頁'
   },
   {
+    name: 'scan',
+    to: '/scan',
+    icon: '📷',
+    label: 'QR掃描'
+  },
+  {
     name: 'statistics',
     to: '/statistics',
     icon: '📊',

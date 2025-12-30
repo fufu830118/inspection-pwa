@@ -40,32 +40,24 @@
         <h2 class="text-white font-bold text-sm">設備資訊</h2>
       </div>
       <div class="p-4 space-y-3">
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <p class="text-xs text-gray-500 mb-1">設備編號</p>
-            <p class="text-sm font-bold text-gray-900">{{ equipment.id }}</p>
-          </div>
-          <div>
-            <p class="text-xs text-gray-500 mb-1">位置</p>
-            <p class="text-sm font-bold text-gray-900">{{ equipment.location }}</p>
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <p class="text-xs text-gray-500 mb-1">設備名稱</p>
-            <p class="text-sm font-medium text-gray-900">{{ equipment.name }}</p>
-          </div>
-          <div>
-            <p class="text-xs text-gray-500 mb-1">類型/尺寸</p>
-            <p class="text-sm font-medium text-gray-900">{{ equipment.type }} / {{ equipment.size }}</p>
-          </div>
-        </div>
+        <!-- 固定显示：设备编号 -->
         <div>
-          <p class="text-xs text-gray-500 mb-1">到期日</p>
-          <p class="text-sm font-bold" :class="isExpiringSoon(equipment.expiryDate) ? 'text-red-600' : 'text-green-600'">
-            {{ equipment.expiryDate }}
-            <span v-if="isExpiringSoon(equipment.expiryDate)" class="ml-1 text-xs">⚠️ 即將到期</span>
-          </p>
+          <p class="text-xs text-gray-500 mb-1">設備編號</p>
+          <p class="text-sm font-bold text-gray-900">{{ equipment.id }}</p>
+        </div>
+        
+        <!-- 动态显示：其他所有字段 -->
+        <div class="grid grid-cols-2 gap-3">
+          <div v-for="field in dynamicFields" :key="field.key">
+            <p class="text-xs text-gray-500 mb-1">{{ field.label }}</p>
+            <p 
+              class="text-sm font-medium"
+              :class="getFieldClass(field.key, field.value)"
+            >
+              {{ field.value || '-' }}
+              <span v-if="field.key === 'expiryDate' && isExpiringSoon(field.value)" class="ml-1 text-xs">⚠️ 即將到期</span>
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -241,6 +233,8 @@ import { useRouter, useRoute } from 'vue-router'
 import { useCategoriesStore } from '../stores/categories'
 import { useInspectionStore } from '../stores/inspection'
 import { useEquipmentStore } from '../stores/equipment'
+import Papa from 'papaparse'
+import { convertInspectionItemsToFormConfig } from '../utils/csvLoader'
 
 const router = useRouter()
 const route = useRoute()
@@ -248,12 +242,32 @@ const categoriesStore = useCategoriesStore()
 const inspectionStore = useInspectionStore()
 const equipmentStore = useEquipmentStore()
 
-const equipmentId = ref(route.params.equipmentId)
+// 區域設備相關參數
+const isAreaDevice = ref(route.params.isAreaDevice || false)
+const areaId = ref(route.params.areaId)
+const deviceType = ref(route.params.deviceType)
+const frequency = ref(route.params.frequency)
+const csvFile = ref(route.query.csvFile)
+const displayName = ref(route.query.displayName)
+
+const equipmentId = ref(route.params.equipmentId || route.params.areaId)
 const categoryId = ref(route.params.categoryId)
 const formData = ref({})
 const isSubmitting = ref(false)
+const areaFormConfig = ref(null)
 
 const category = computed(() => {
+  // 如果是區域設備，創建虛擬 category 物件
+  if (isAreaDevice.value) {
+    return {
+      id: '16', // 區域類別ID
+      name: deviceType.value,
+      icon: getDeviceIcon(deviceType.value),
+      frequency: frequency.value,
+      form_config: areaFormConfig.value || { fields: [] }
+    }
+  }
+  
   if (categoryId.value) {
     return categoriesStore.getCategoryById(categoryId.value)
   }
@@ -261,12 +275,155 @@ const category = computed(() => {
   return categoriesStore.findCategoryByEquipmentId(equipmentId.value)
 })
 
+// 區域設備圖示映射
+function getDeviceIcon(deviceName) {
+  const icons = {
+    '事務機': '📠',
+    '文具櫃': '📁',
+    '植栽': '🌿',
+    '環境清潔': '🧹',
+    '冰箱': '🧊',
+    '咖啡機': '☕'
+  }
+  return icons[deviceName] || '📦'
+}
+
 // 获取设备详细资讯
 const equipment = computed(() => {
+  // 如果是區域設備，使用載入的區域設備詳細資料
+  if (isAreaDevice.value && areaEquipmentData.value) {
+    return {
+      id: areaEquipmentData.value['設備編號'],
+      categoryId: '16',
+      categoryName: '區域',
+      ...Object.fromEntries(
+        Object.entries(areaEquipmentData.value).map(([key, value]) => {
+          // 將中文欄位映射為英文屬性名
+          const fieldMap = {
+            '設備名稱': 'name',
+            '廠牌': 'brand',
+            '型號': 'model',
+            '位置': 'location',
+            '備註': 'note'
+          }
+          return [fieldMap[key] || key, value]
+        })
+      )
+    }
+  }
+  
+  // 一般設備
   return equipmentStore.getEquipmentById(equipmentId.value)
 })
 
-onMounted(() => {
+const areaEquipmentData = ref(null)
+
+// 动态生成设备字段列表（排除固定字段）
+const dynamicFields = computed(() => {
+  if (!equipment.value) return []
+  
+  const excludeKeys = ['id', 'qrCode', 'categoryId', 'categoryName']
+  const fieldLabelMap = {
+    'location': '位置',
+    'type': '類型',
+    'size': '尺寸',
+    'expiryDate': '有效日期',
+    'spec': '規格',
+    'brand': '廠牌',
+    'model': '型號',
+    'name': '名稱'
+  }
+  
+  const fields = []
+  Object.keys(equipment.value).forEach(key => {
+    if (!excludeKeys.includes(key) && equipment.value[key]) {
+      fields.push({
+        key: key,
+        label: fieldLabelMap[key] || key, // 如果有映射就用，否则用原始 key
+        value: equipment.value[key]
+      })
+    }
+  })
+  
+  return fields
+})
+
+// 根据字段类型返回样式类
+function getFieldClass(fieldKey, fieldValue) {
+  if (fieldKey === 'expiryDate' || fieldKey.includes('有效日期')) {
+    return isExpiringSoon(fieldValue) ? 'text-red-600 font-bold' : 'text-green-600 font-bold'
+  }
+  return 'text-gray-900'
+}
+
+// 載入區域設備檢點項目
+async function loadAreaInspectionItems() {
+  if (!csvFile.value) return null
+  
+  try {
+    const response = await fetch(`/檢點表/區域/${csvFile.value}`)
+    const csvText = await response.text()
+    
+    return new Promise((resolve, reject) => {
+      Papa.parse(csvText, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          const formConfig = convertInspectionItemsToFormConfig(results.data)
+          resolve(formConfig)
+        },
+        error: (error) => reject(error)
+      })
+    })
+  } catch (error) {
+    console.error('載入區域檢點項目失敗:', error)
+    return null
+  }
+}
+
+// 載入區域設備詳細資料
+async function loadAreaEquipmentData() {
+  if (!equipmentId.value) return null
+  
+  try {
+    const response = await fetch('/檢點表/區域/區域設備詳細清單.csv')
+    const csvText = await response.text()
+    
+    return new Promise((resolve, reject) => {
+      Papa.parse(csvText, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          const equipmentData = results.data.find(row => row['設備編號'] === equipmentId.value)
+          resolve(equipmentData)
+        },
+        error: (error) => reject(error)
+      })
+    })
+  } catch (error) {
+    console.error('載入區域設備詳細資料失敗:', error)
+    return null
+  }
+}
+
+onMounted(async () => {
+  // 如果是區域設備，先載入檢點項目和設備資料
+  if (isAreaDevice.value) {
+    const [formConfig, equipData] = await Promise.all([
+      loadAreaInspectionItems(),
+      loadAreaEquipmentData()
+    ])
+    
+    areaFormConfig.value = formConfig
+    areaEquipmentData.value = equipData
+    
+    if (!formConfig) {
+      alert('無法載入檢點項目')
+      router.push('/')
+      return
+    }
+  }
+  
   if (!category.value) {
     alert('無法識別設備類別')
     router.push('/')
@@ -293,6 +450,16 @@ onMounted(() => {
 
 function handleBack() {
   if (confirm('確定要放棄這次檢查嗎？')) {
+    // 如果是區域設備，返回設備選擇頁面
+    if (isAreaDevice.value) {
+      router.push({
+        name: 'area-device-selector',
+        params: { areaId: areaId.value || equipmentId.value }
+      })
+      return
+    }
+
+    // 一般設備：返回設備列表
     router.push({
       name: 'equipment-list',
       params: { categoryId: categoryId.value }

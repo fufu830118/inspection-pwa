@@ -41,16 +41,16 @@ export async function loadCSV(folderName, fileName) {
 export function convertInspectionItemsToFormConfig(csvData) {
   // 過濾掉空白或無效的列
   const validRows = csvData.filter(row => {
-    const itemName = row['項目名稱'] || ''
-    const questionType = row['題型'] || ''
-    // 必須有項目名稱和題型才算有效
+    const itemName = row['檢查項目'] || ''
+    const questionType = row['欄位類型'] || ''
+    // 必須有檢查項目和欄位類型才算有效
     return itemName.trim() !== '' && questionType.trim() !== ''
   })
 
   const fields = validRows.map((row, index) => {
     const fieldId = `field_${index}`
-    const label = row['項目名稱'] || ''
-    const questionType = row['題型'] || ''
+    const label = row['檢查項目'] || ''
+    const questionType = row['欄位類型'] || ''
     const required = row['必填'] === '是'
 
     // 根據題型決定 field type
@@ -68,9 +68,9 @@ export function convertInspectionItemsToFormConfig(csvData) {
       label: label,
       type: type,
       required: required,
-      checkPoint: row['檢查重點'] || '',
-      normalStandard: row['正常標準'] || '',
-      abnormalStandard: row['異常標準'] || ''
+      checkPoint: row['說明'] || '',
+      normalStandard: row['合格條件'] || '',
+      abnormalStandard: row['不合格條件'] || ''
     }
   })
 
@@ -78,67 +78,74 @@ export function convertInspectionItemsToFormConfig(csvData) {
 }
 
 /**
+ * 載入類別配置
+ * @returns {Promise<Array>} 類別配置列表
+ */
+export async function loadCategoryConfig() {
+  try {
+    const response = await fetch(`/檢點表/類別配置.csv`)
+    if (!response.ok) {
+      throw new Error('Failed to load 類別配置.csv')
+    }
+
+    const csvText = await response.text()
+
+    return new Promise((resolve, reject) => {
+      Papa.parse(csvText, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          resolve(results.data)
+        },
+        error: (error) => {
+          reject(error)
+        }
+      })
+    })
+  } catch (error) {
+    console.error('Error loading 類別配置.csv:', error)
+    throw error
+  }
+}
+
+/**
  * 載入所有檢點表類別
  * @returns {Promise<Array>} 類別列表
  */
 export async function loadAllCategories() {
-  const categoryFolders = [
-    { name: '滅火器', icon: '🧯', id_prefix: 'FIREXT' },
-    { name: '自動門', icon: '🚪', id_prefix: 'AUTD' },
-    { name: '防火鐵捲門', icon: '🔥', id_prefix: 'FIRD' },
-    { name: '逃生門', icon: '🚨', id_prefix: 'EXIT' },
-    { name: '會議室', icon: '🏢', id_prefix: 'ROOM' },
-    { name: '緊急沖眼器查檢表', icon: '👁️', id_prefix: 'EYE' },
-    { name: '事務機', icon: '🖨️', id_prefix: 'OFA' },
-    { name: '送風機', icon: '💨', id_prefix: 'FAN' },
-    { name: '氣冷箱型冷氣機', icon: '❄️', id_prefix: 'CHI' },
-    { name: '實驗室大電盤', icon: '⚡', id_prefix: 'LABPOW-BIG' },
-    { name: '辦公室大盤和實驗室小盤', icon: '⚡', id_prefix: 'LABPOW-MIX' },
-    { name: '辦公室小電盤', icon: '⚡', id_prefix: 'OFFPOW-SMALL' },
-    { name: '辦公室機房電盤', icon: '⚡', id_prefix: 'OFFPOW-SERVER' },
-    { name: '化學品室環境', icon: '🧪', id_prefix: 'CHEM' },
-    { name: '化學品洩漏處理車', icon: '🚨', id_prefix: 'CHEMCART' }
-  ]
+  // 從 CSV 讀取類別配置
+  const categoryConfig = await loadCategoryConfig()
 
   const categories = []
 
-  for (let i = 0; i < categoryFolders.length; i++) {
-    const folder = categoryFolders[i]
+  for (let i = 0; i < categoryConfig.length; i++) {
+    const config = categoryConfig[i]
     try {
-      // 讀取頻率 CSV
-      let frequency = '每月' // 預設值
-      try {
-        const frequencyData = await loadCSV(folder.name, '頻率.csv')
-        frequency = frequencyData[0]?.['頻率'] || '每月'
-      } catch (err) {
-        console.warn(`No frequency.csv for ${folder.name}, using default: 每月`)
-      }
-
       // 讀取檢點項目 CSV
-      const inspectionItems = await loadCSV(folder.name, '檢點項目.csv')
+      const inspectionItems = await loadCSV(config['類別名稱'], '檢點項目.csv')
 
       // Debug: 印出載入的資料
-      console.log(`[${folder.name}] 載入 ${inspectionItems.length} 個檢查項目`)
+      console.log(`[${config['類別名稱']}] 載入 ${inspectionItems.length} 個檢查項目`)
       if (inspectionItems.length > 0) {
-        console.log(`[${folder.name}] 第一個項目:`, inspectionItems[0])
-        console.log(`[${folder.name}] 欄位名稱:`, Object.keys(inspectionItems[0]))
+        console.log(`[${config['類別名稱']}] 第一個項目:`, inspectionItems[0])
+        console.log(`[${config['類別名稱']}] 欄位名稱:`, Object.keys(inspectionItems[0]))
       }
 
       // 轉換為 form_config
       const formConfig = convertInspectionItemsToFormConfig(inspectionItems)
 
-      console.log(`[${folder.name}] 轉換後 ${formConfig.fields.length} 個欄位`)
+      console.log(`[${config['類別名稱']}] 轉換後 ${formConfig.fields.length} 個欄位`)
 
       categories.push({
-        id: String(i + 1),
-        name: folder.name,
-        id_prefix: folder.id_prefix,
-        icon: folder.icon,
-        frequency: frequency,
+        id: config['類別ID'],
+        name: config['類別名稱'],
+        id_prefix: config['ID前綴'],
+        icon: config['圖示'],
+        frequency: config['頻率'] || '每月', // 預設每月
         form_config: formConfig
       })
     } catch (error) {
-      console.warn(`Skipping ${folder.name}:`, error.message)
+      console.warn(`Skipping ${config['類別名稱']}:`, error.message)
     }
   }
 
@@ -152,43 +159,48 @@ export async function loadAllCategories() {
  */
 export async function loadEquipmentList(categoryName) {
   try {
-    // 載入基本設備清單（含 QR Code 亂碼）
+    // 只載入設備清單（已包含所有詳細資訊）
     const equipmentData = await loadCSV(categoryName, '設備清單.csv')
 
-    // 嘗試載入詳細清單（含位置、類型、有效日期等資訊）
-    let detailedData = []
-    try {
-      detailedData = await loadCSV(categoryName, `${categoryName}詳細清單.csv`)
-    } catch (err) {
-      console.warn(`No detailed list for ${categoryName}`)
-    }
-
-    // 合併兩個清單的資料
+    // 動態讀取所有欄位
     return equipmentData.map(row => {
-      const baseId = row['編碼顯示'] || ''
+      const equipment = {
+        id: row['設備ID'] || '',
+        qrCode: row['QR碼'] || '',
+        categoryName: categoryName
+      }
 
-      // 從詳細清單中尋找對應的資料
-      // 設備清單格式: FIREXT-A23-A1-01-1
-      // 詳細清單格式: A23A1-01-1 (移除第一個 -)
-      const shortId = baseId.replace(/^[A-Z]+-/, '').replace('-', '') // FIREXT-A23-A1-01-1 -> A23A1-01-1
-      const detailRow = detailedData.find(d => {
-        const detailId = d['編號'] || d['條碼內容'] || ''
-        return detailId === shortId
+      // 動態加入所有其他欄位（自訂欄位）
+      Object.keys(row).forEach(key => {
+        if (key !== '設備ID' && key !== 'QR碼' && row[key]) {
+          // 直接使用原來的中文欄位名，不轉換
+          // UI 會根據需要顯示這些欄位
+          let propName = key
+
+          // 處理常見的欄位映射（為了向後兼容）
+          if (key.includes('類型')) {
+            propName = 'type'
+          } else if (key === '尺寸') {
+            propName = 'size'
+          } else if (key === '位置') {
+            propName = 'location'
+          } else if (key.includes('有效日期') || key === '到期日') {
+            propName = 'expiryDate'
+          } else if (key.includes('規格')) {
+            propName = 'spec'
+          } else if (key === '廠牌') {
+            propName = 'brand'
+          } else if (key === '型號') {
+            propName = 'model'
+          } else if (key === '名稱' || key === '設備名稱') {
+            propName = 'name'
+          }
+
+          equipment[propName] = row[key]
+        }
       })
 
-      return {
-        id: baseId,
-        qrCode: row['亂碼'] || '',
-        name: row['顯示名稱'] || detailRow?.['標題'] || categoryName,
-        categoryName: categoryName,
-        location: detailRow?.['位置'] || '',
-        type: detailRow?.['滅火器類型'] || detailRow?.['類型'] || '',
-        size: detailRow?.['尺寸'] || '',
-        expiryDate: detailRow?.['有效日期'] || '',
-        length: row['長度'] || '',
-        width: row['寬度'] || '',
-        color: row['顏色'] || ''
-      }
+      return equipment
     })
   } catch (error) {
     console.warn(`No equipment list for ${categoryName}`)
@@ -197,23 +209,102 @@ export async function loadEquipmentList(categoryName) {
 }
 
 /**
- * 載入所有設備清單
+ * 載入所有設備列表
  * @returns {Promise<Array>} 所有設備列表
  */
 export async function loadAllEquipment() {
-  const categoryFolders = [
-    '滅火器', '自動門', '防火鐵捲門', '逃生門', '會議室',
-    '緊急沖眼器查檢表', '事務機', '送風機', '氣冷箱型冷氣機',
-    '實驗室大電盤', '辦公室大盤和實驗室小盤', '辦公室小電盤', '辦公室機房電盤',
-    '化學品室環境', '化學品洩漏處理車'
-  ]
+  try {
+    const categoryConfig = await loadCategoryConfig()
+    const allEquipment = []
 
-  const allEquipment = []
+    for (const config of categoryConfig) {
+      const categoryName = config['類別名稱']
 
-  for (const folder of categoryFolders) {
-    const equipment = await loadEquipmentList(folder)
-    allEquipment.push(...equipment)
+      // 跳過區域類別（區域設備單獨處理）
+      if (categoryName === '區域') continue
+
+      const equipmentList = await loadEquipmentList(categoryName)
+      allEquipment.push(...equipmentList)
+    }
+
+    // 額外載入區域設備的基本資訊（用於QR Code識別）
+    try {
+      const response = await fetch('/檢點表/區域/區域設備詳細清單.csv')
+      const csvText = (await response.text()).trim().replace(/^\uFEFF/, '')
+
+      const areaEquipmentData = await new Promise((resolve, reject) => {
+        Papa.parse(csvText, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (results) => resolve(results.data),
+          error: (error) => reject(error)
+        })
+      })
+
+      // 提取唯一的區域ID和QR碼
+      const areaMap = new Map()
+      areaEquipmentData.forEach(row => {
+        const areaId = row['區域ID']
+        if (areaId && !areaMap.has(areaId)) {
+          // 從詳細清單中找到該區域的第一筆記錄來獲取QR碼
+          const firstEquip = areaEquipmentData.find(e => e['區域ID'] === areaId)
+          // 查找對應的QR Code
+          const qrCode = getAreaQRCode(areaId)
+
+          if (qrCode) {
+            areaMap.set(areaId, {
+              id: areaId,
+              qrCode: qrCode,
+              categoryName: '區域',
+              categoryId: '16' // 區域類別ID
+            })
+          }
+        }
+      })
+
+      // 將區域設備加入總列表
+      allEquipment.push(...Array.from(areaMap.values()))
+
+      console.log(`載入了 ${areaMap.size} 個區域設備`)
+    } catch (error) {
+      console.warn('載入區域設備清單失敗:', error)
+    }
+
+    return allEquipment
+  } catch (error) {
+    console.error('載入設備清單失敗:', error)
+    throw error
+  }
+}
+
+// 根據區域ID獲取對應的QR碼
+function getAreaQRCode(areaId) {
+  // 從 OFA 區域 QR Code 列表中查找
+  const areaQRCodes = {
+    'OFA-A23-A1-01': '30cf77bf1c6c3240',
+    'OFA-A23-A2-01': '4f32ae0006ecb317',
+    'OFA-A23-A3-01': '7bbc01c6550b4dbe',
+    'OFA-A23-A4-01': 'e221797af61a3b38',
+    'OFA-A3-A1-01': '298b737b6a7b07d3',
+    'OFA-AB3-A1-01': '9caf419146c7ad4a',
+    'OFA-C2-C1-01': '806ae1714c501217',
+    'OFA-C3-C1-01': '9229c950c3c9954d',
+    'OFA-C7-C1-01': 'ca5337e24b5a8832',
+    'OFA-C7-C3-01': '7d738ec8bcbd7cce',
+    'OFA-C7-C4-01': '41c8bb8e34aa53ea',
+    'OFA-C8-C1-01': '6c5bfe92b969e42e',
+    'OFA-C8-C2-01': '2967ee99a84ef34d',
+    'OFA-C8-C3-01': 'e777d37b6ade6f02',
+    'OFA-C8-C4-01': '7e782f0fba906df3',
+    'OFA-C23-C1-01': '616ccca058a3f3d2',
+    'OFA-C23-C2-01': 'fb562a76be67dc14',
+    'OFA-C24-C1-01': '2d9ce15a9f8a0893',
+    'OFA-C24-C2-01': '0b793a2d330193d3',
+    'OFA-C26-C1-01': '6048c86759557e01',
+    'OFA-C26-C2-01': 'd116bdf4b3b9df5f',
+    'OFA-C26-C3-01': '984de6786769d99b',
+    'OFA-C26-C4-01': '6c6da1417ae36d35'
   }
 
-  return allEquipment
+  return areaQRCodes[areaId] || ''
 }

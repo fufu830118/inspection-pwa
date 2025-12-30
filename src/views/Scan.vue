@@ -107,17 +107,30 @@ function processEquipmentId(qrCodeOrId) {
     // 停止掃描
     stopScanning()
 
-    // 從設備資訊取得 categoryId，導向檢查表單頁面
-    router.push({
-      name: 'inspection-form',
-      params: {
-        categoryId: equipment.categoryId,
-        equipmentId: equipment.id  // 使用設備的正式 ID
-      }
-    })
+    // 檢查是否為區域類別（ID為16）
+    const category = categoriesStore.getCategoryById(equipment.categoryId)
+    
+    if (category && (category.name === '區域' || category.id === '16' || category.id === 16)) {
+      // 區域類別：導向設備選擇頁面
+      router.push({
+        name: 'area-device-selector',
+        params: {
+          areaId: equipment.id
+        }
+      })
+    } else {
+      // 一般設備：導向檢查表單頁面
+      router.push({
+        name: 'inspection-form',
+        params: {
+          categoryId: equipment.categoryId,
+          equipmentId: equipment.id
+        }
+      })
+    }
   } else {
     // 無法識別的設備編號或 QR Code
-    alert(`找不到設備: ${qrCodeOrId}\n\n請確認 QR Code 是否正確，或聯絡系統管理員。`)
+    alert(`找不到設備: ${qrCodeOrId}\\n\\n請確認 QR Code 是否正確，或聯絡系統管理員。`)
   }
 }
 

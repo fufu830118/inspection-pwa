@@ -46,6 +46,26 @@ const routes = [
     props: true
   },
   {
+    path: '/area/:areaId/devices',
+    name: 'area-device-selector',
+    component: () => import('../views/AreaDeviceSelector.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/area/:areaId/:deviceType/:frequency/inspect',
+    name: 'area-inspection-form',
+    component: () => import('../views/InspectionForm.vue'),
+    meta: { requiresAuth: true },
+    props: route => ({
+      areaId: route.params.areaId,
+      deviceType: route.params.deviceType,
+      frequency: route.params.frequency,
+      csvFile: route.query.csvFile,
+      displayName: route.query.displayName,
+      isAreaDevice: true
+    })
+  },
+  {
     path: '/login',
     name: 'login',
     component: () => import('../views/Login.vue'),
